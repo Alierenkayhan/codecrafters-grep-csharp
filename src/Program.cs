@@ -1,94 +1,75 @@
-using System.Text.RegularExpressions;
+using System;
 
-static bool MatchPattern(string inputLine, string pattern)
-{
-    int inputIndex = 0;
-    int patternIndex = 0;
-
-    while (patternIndex < pattern.Length && inputIndex < inputLine.Length)
-    {
-        if (pattern[patternIndex] == '\\')
-        {
-            patternIndex++;
-
-            if (patternIndex >= pattern.Length) 
-                throw new ArgumentException("Invalid pattern: Trailing backslash");
-
-            if (pattern[patternIndex] == 'd')
-            {
-                if (!char.IsDigit(inputLine[inputIndex]))   
-                    return false;
-
-                patternIndex++;
-                inputIndex++;
-            }
-            else if (pattern[patternIndex] == 'w')
-            {
-                if (!char.IsLetterOrDigit(inputLine[inputIndex])) 
-                    return false;
-
-                patternIndex++;
-                inputIndex++;
-            }
-            else
-            {
-                throw new ArgumentException($"Unhandled escape sequence: \\{pattern[patternIndex]}");
-            }
-        }
-        else if (pattern[patternIndex] == '[')
-        {
-            int closeBracketIndex = pattern.IndexOf(']', patternIndex);
-            if (closeBracketIndex == -1)
-                throw new ArgumentException("Invalid pattern: Missing closing bracket");
-
-            string charClass = pattern.Substring(patternIndex + 1, closeBracketIndex - patternIndex - 1);
-            bool negate = charClass.StartsWith("^");
-            if (negate) charClass = charClass.Substring(1);
-
-            if (negate)
-            {
-                if (charClass.Contains(inputLine[inputIndex]))
-                    return false;
-            }
-            else
-            {
-                if (!charClass.Contains(inputLine[inputIndex]))
-                    return false;
-            }
-
-            patternIndex = closeBracketIndex + 1;
-            inputIndex++;
-        }
-        else
-        {
-            if (pattern[patternIndex] != inputLine[inputIndex])
-            {
-                inputIndex++;
-                continue;
-            }
-
-            patternIndex++;
-            inputIndex++;
-        }
-
-        while (inputIndex < inputLine.Length && patternIndex < pattern.Length && inputLine[inputIndex] != pattern[patternIndex])
-        {
-            inputIndex++;
-        }
-    }
-    return patternIndex == pattern.Length;
-}
-
-if (args.Length < 2 || args[0] != "-E")
+if (args[0] != "-E")
 {
     Console.WriteLine("Expected first argument to be '-E'");
     Environment.Exit(2);
 }
 
 string pattern = args[1];
-string inputLine = Console.In.ReadToEnd();
+string inputLine = Console.In.ReadToEnd().Trim();
 
-if (MatchPattern(inputLine, pattern)) 
+int patternIndex = 0;
+bool matched = false;
+
+for (int inputIndex = 0; inputIndex < inputLine.Length && patternIndex < pattern.Length; inputIndex++)
+{
+    char currentPatternChar = pattern[patternIndex];
+
+    if (currentPatternChar == '\\')
+    {
+        matched = IsMatch(pattern[patternIndex + 1], inputLine[inputIndex]);
+        if (matched) patternIndex += 2;
+    }
+    else if (currentPatternChar == '[')
+    {
+        matched = HandleCharacterGroup(inputLine[inputIndex], pattern, ref patternIndex);
+    }
+    else
+    {
+        matched = inputLine[inputIndex] == currentPatternChar;
+        if (matched) patternIndex++;
+    }
+
+    if (!matched)
+        break;
+}
+
+if (matched && patternIndex == pattern.Length)
+{
+    Console.WriteLine("Matched");
     Environment.Exit(0);
+}
 else
+{
+    Console.WriteLine("Not matched");
     Environment.Exit(1);
+}
+
+bool IsMatch(char reg, char val)
+{
+    return reg switch
+    {
+        'd' => char.IsDigit(val),
+        'w' => char.IsLetterOrDigit(val),
+        _ => false
+    };
+}
+
+bool HandleCharacterGroup(char inputChar, string pattern, ref int patternIndex)
+{
+    int endBracketIndex = pattern.IndexOf(']', patternIndex);
+    if (endBracketIndex == -1)
+    {
+        throw new ArgumentException($"Unmatched '[' in pattern: {pattern}");
+    }
+
+    bool isNegativeGroup = pattern[patternIndex + 1] == '^';
+    int startIndex = isNegativeGroup ? patternIndex + 2 : patternIndex + 1;
+    string characterGroup = pattern.Substring(startIndex, endBracketIndex - startIndex);
+
+    patternIndex = endBracketIndex + 1;
+
+    bool isMatch = characterGroup.Contains(inputChar);
+    return isNegativeGroup ? !isMatch : isMatch;
+}
