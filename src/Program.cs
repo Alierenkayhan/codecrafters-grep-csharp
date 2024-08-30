@@ -1,9 +1,3 @@
-using System.Text.RegularExpressions;
-using System.Runtime.CompilerServices;
-using System.Globalization;
-using System.Runtime.Serialization;
-using System.Security;
-using System.IO;
 using System;
 
 if (args[0] != "-E")
@@ -12,50 +6,73 @@ if (args[0] != "-E")
     Environment.Exit(2);
 }
 
-
 string pattern = args[1];
 string inputLine = Console.In.ReadToEnd();
 
 int patternIndex = 0;
-var matched = false;
+bool matched = false;
 
-if (pattern[0] == '^')
+
+bool startsWithAnchor = pattern[0] == '^';
+if (startsWithAnchor)
 {
-    patternIndex++;
+    patternIndex++; 
 }
 
 
-for (int inputIndex = 0; inputIndex < inputLine.Length; inputIndex++)
-{
-    if (patternIndex == 0 && pattern[0] == '^' && inputIndex != 0)
-        break;
- 
-    if (pattern[patternIndex] == '\\')
-    {
-        matched = IsMatch(pattern[patternIndex + 1], inputLine[inputIndex]);
-        if (matched)
-            patternIndex += 2;
-    }
-    else if (pattern[patternIndex] == '[')
-    {
-        matched = IsMatch(pattern[patternIndex], inputLine[inputIndex]);
-        if (matched)
-            patternIndex = pattern.IndexOf(']') + 1;
-    }
-    else
-    {
-        matched = inputLine[inputIndex] == pattern[patternIndex];
-        if (matched)
-            patternIndex++;
-    }
-    if (patternIndex == pattern.Length)
-        break;
-}
-if (!matched || patternIndex < pattern.Length)
+if (startsWithAnchor && pattern.Length - 1 > inputLine.Length)
 {
     Console.WriteLine("Not matched");
     Environment.Exit(1);
 }
+
+for (int inputIndex = 0; inputIndex < inputLine.Length; inputIndex++)
+{
+
+    if (startsWithAnchor && inputIndex > 0)
+    {
+        break;
+    }
+
+    if (patternIndex < pattern.Length && pattern[patternIndex] == '\\')
+    {
+        matched = IsMatch(pattern[patternIndex + 1], inputLine[inputIndex]);
+        if (matched)
+        {
+            patternIndex += 2;
+        }
+    }
+    else if (patternIndex < pattern.Length && pattern[patternIndex] == '[')
+    {
+        matched = IsMatch(pattern[patternIndex], inputLine[inputIndex]);
+        if (matched)
+        {
+            patternIndex = pattern.IndexOf(']') + 1;
+        }
+    }
+    else if (patternIndex < pattern.Length)
+    {
+        matched = inputLine[inputIndex] == pattern[patternIndex];
+        if (matched)
+        {
+            patternIndex++;
+        }
+        else if (startsWithAnchor)
+        {
+            break;
+        }
+    }
+
+    if (patternIndex == pattern.Length)
+        break;
+}
+
+if (patternIndex != pattern.Length)
+{
+    Console.WriteLine("Not matched");
+    Environment.Exit(1);
+}
+
 Console.WriteLine(matched);
 Environment.Exit(0);
 
@@ -70,9 +87,10 @@ bool IsMatch(char reg, char val)
         case '[':
             return HandleCharacterGroup(inputLine, pattern);
         default:
-            return false;
+            return reg == val;
     }
 }
+
 static bool HandleCharacterGroup(string inputLine, string pattern)
 {
     string comparisonChars;
@@ -80,14 +98,14 @@ static bool HandleCharacterGroup(string inputLine, string pattern)
     {
         throw new ArgumentException($"Unhandled pattern: {pattern}");
     }
+
     if (pattern[pattern.IndexOf("[") + 1] == '^')
     {
-        comparisonChars = pattern.Substring(2, pattern.Length - 2);
+        comparisonChars = pattern.Substring(2, pattern.IndexOf("]") - 2);
         foreach (char c in comparisonChars)
         {
             if (inputLine.Contains(c))
             {
-                Console.WriteLine($"{inputLine} contains {c}");
                 return false;
             }
         }
@@ -95,12 +113,11 @@ static bool HandleCharacterGroup(string inputLine, string pattern)
     }
     else
     {
-        comparisonChars = pattern.Substring(1, pattern.Length - 2);
+        comparisonChars = pattern.Substring(1, pattern.IndexOf("]") - 1);
         foreach (char c in comparisonChars)
         {
             if (inputLine.Contains(c))
             {
-                Console.WriteLine($"{inputLine} contains {c}");
                 return true;
             }
         }
