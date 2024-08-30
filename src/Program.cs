@@ -1,4 +1,5 @@
 using System;
+using System.Text.RegularExpressions;
 
 if (args[0] != "-E")
 {
@@ -35,15 +36,24 @@ for (int inputIndex = 0; inputIndex < inputLine.Length && patternIndex < pattern
         break;
 }
 
-if (matched && patternIndex == pattern.Length)
+try
 {
-    Console.WriteLine("Matched");
-    Environment.Exit(0);
+    Regex regex = new Regex(pattern);
+    if (regex.IsMatch(inputLine))
+    {
+        Console.WriteLine("Matched");
+        Environment.Exit(0);
+    }
+    else
+    {
+        Console.WriteLine("Not matched");
+        Environment.Exit(1);
+    }
 }
-else
+catch (ArgumentException ex)
 {
-    Console.WriteLine("Not matched");
-    Environment.Exit(1);
+    Console.WriteLine($"Invalid pattern: {ex.Message}");
+    Environment.Exit(2);
 }
 
 bool IsMatch(char reg, char val)
