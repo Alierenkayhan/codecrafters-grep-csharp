@@ -1,11 +1,15 @@
 using System;
 using System.IO;
-
+using System.Text.RegularExpressions;
 static bool MatchPattern(string inputLine, string pattern)
 {
-    if (pattern == @"\d")
+    if (pattern == @"\w")
     {
-        return System.Text.RegularExpressions.Regex.IsMatch(inputLine, @"\d");
+        return Regex.IsMatch(inputLine, @"\w");
+    }
+    else if (pattern == @"\d")
+    {
+        return Regex.IsMatch(inputLine, @"\d");
     }
     else if (pattern.Length == 1)
     {
