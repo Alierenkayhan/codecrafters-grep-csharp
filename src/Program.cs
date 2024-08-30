@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+
 static bool MatchPattern(string inputLine, string pattern)
 {
     int inputIndex = 0;
@@ -10,12 +11,12 @@ static bool MatchPattern(string inputLine, string pattern)
         {
             patternIndex++;
 
-            if (patternIndex >= pattern.Length)
+            if (patternIndex >= pattern.Length) 
                 throw new ArgumentException("Invalid pattern: Trailing backslash");
 
             if (pattern[patternIndex] == 'd')
             {
-                if (!char.IsDigit(inputLine[inputIndex]))
+                if (!char.IsDigit(inputLine[inputIndex]))   
                     return false;
 
                 patternIndex++;
@@ -23,7 +24,7 @@ static bool MatchPattern(string inputLine, string pattern)
             }
             else if (pattern[patternIndex] == 'w')
             {
-                if (!char.IsLetterOrDigit(inputLine[inputIndex]))
+                if (!char.IsLetterOrDigit(inputLine[inputIndex])) 
                     return false;
 
                 patternIndex++;
@@ -61,17 +62,24 @@ static bool MatchPattern(string inputLine, string pattern)
         else
         {
             if (pattern[patternIndex] != inputLine[inputIndex])
-                return false;
+            {
+                inputIndex++;
+                continue;
+            }
 
             patternIndex++;
             inputIndex++;
         }
-    }
 
-    return patternIndex == pattern.Length && inputIndex == inputLine.Length;
+        while (inputIndex < inputLine.Length && patternIndex < pattern.Length && inputLine[inputIndex] != pattern[patternIndex])
+        {
+            inputIndex++;
+        }
+    }
+    return patternIndex == pattern.Length;
 }
 
-if (args[0] != "-E")
+if (args.Length < 2 || args[0] != "-E")
 {
     Console.WriteLine("Expected first argument to be '-E'");
     Environment.Exit(2);
@@ -80,5 +88,7 @@ if (args[0] != "-E")
 string pattern = args[1];
 string inputLine = Console.In.ReadToEnd();
 
-if (MatchPattern(inputLine, pattern))   Environment.Exit(0);
-else  Environment.Exit(1);
+if (MatchPattern(inputLine, pattern)) 
+    Environment.Exit(0);
+else
+    Environment.Exit(1);
