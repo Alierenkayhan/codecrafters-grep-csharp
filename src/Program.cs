@@ -1,5 +1,10 @@
-using System;
 using System.Text.RegularExpressions;
+using System.Runtime.CompilerServices;
+using System.Globalization;
+using System.Runtime.Serialization;
+using System.Security;
+using System.IO;
+using System;
 
 if (args[0] != "-E")
 {
@@ -7,79 +12,98 @@ if (args[0] != "-E")
     Environment.Exit(2);
 }
 
+
 string pattern = args[1];
-string inputLine = Console.In.ReadToEnd().Trim();
+string inputLine = Console.In.ReadToEnd();
 
 int patternIndex = 0;
-bool matched = false;
+var matched = false;
 
-for (int inputIndex = 0; inputIndex < inputLine.Length && patternIndex < pattern.Length; inputIndex++)
+if (pattern[0] == '^')
 {
-    char currentPatternChar = pattern[patternIndex];
+    patternIndex++;
+}
 
-    if (currentPatternChar == '\\')
+
+for (int inputIndex = 0; inputIndex < inputLine.Length; inputIndex++)
+{
+    if (patternIndex == 0 && pattern[0] == '^' && inputIndex != 0)
+        break;
+ 
+    if (pattern[patternIndex] == '\\')
     {
         matched = IsMatch(pattern[patternIndex + 1], inputLine[inputIndex]);
-        if (matched) patternIndex += 2;
+        if (matched)
+            patternIndex += 2;
     }
-    else if (currentPatternChar == '[')
+    else if (pattern[patternIndex] == '[')
     {
-        matched = HandleCharacterGroup(inputLine[inputIndex], pattern, ref patternIndex);
+        matched = IsMatch(pattern[patternIndex], inputLine[inputIndex]);
+        if (matched)
+            patternIndex = pattern.IndexOf(']') + 1;
     }
     else
     {
-        matched = inputLine[inputIndex] == currentPatternChar;
-        if (matched) patternIndex++;
+        matched = inputLine[inputIndex] == pattern[patternIndex];
+        if (matched)
+            patternIndex++;
     }
-
-    if (!matched)
+    if (patternIndex == pattern.Length)
         break;
 }
-
-try
+if (!matched || patternIndex < pattern.Length)
 {
-    Regex regex = new Regex(pattern);
-    if (regex.IsMatch(inputLine))
-    {
-        Console.WriteLine("Matched");
-        Environment.Exit(0);
-    }
-    else
-    {
-        Console.WriteLine("Not matched");
-        Environment.Exit(1);
-    }
+    Console.WriteLine("Not matched");
+    Environment.Exit(1);
 }
-catch (ArgumentException ex)
-{
-    Console.WriteLine($"Invalid pattern: {ex.Message}");
-    Environment.Exit(2);
-}
+Console.WriteLine(matched);
+Environment.Exit(0);
 
 bool IsMatch(char reg, char val)
 {
-    return reg switch
+    switch (reg)
     {
-        'd' => char.IsDigit(val),
-        'w' => char.IsLetterOrDigit(val),
-        _ => false
-    };
-}
-
-bool HandleCharacterGroup(char inputChar, string pattern, ref int patternIndex)
-{
-    int endBracketIndex = pattern.IndexOf(']', patternIndex);
-    if (endBracketIndex == -1)
-    {
-        throw new ArgumentException($"Unmatched '[' in pattern: {pattern}");
+        case 'd':
+            return char.IsDigit(val);
+        case 'w':
+            return char.IsLetterOrDigit(val);
+        case '[':
+            return HandleCharacterGroup(inputLine, pattern);
+        default:
+            return false;
     }
-
-    bool isNegativeGroup = pattern[patternIndex + 1] == '^';
-    int startIndex = isNegativeGroup ? patternIndex + 2 : patternIndex + 1;
-    string characterGroup = pattern.Substring(startIndex, endBracketIndex - startIndex);
-
-    patternIndex = endBracketIndex + 1;
-
-    bool isMatch = characterGroup.Contains(inputChar);
-    return isNegativeGroup ? !isMatch : isMatch;
+}
+static bool HandleCharacterGroup(string inputLine, string pattern)
+{
+    string comparisonChars;
+    if (!pattern.Contains("]"))
+    {
+        throw new ArgumentException($"Unhandled pattern: {pattern}");
+    }
+    if (pattern[pattern.IndexOf("[") + 1] == '^')
+    {
+        comparisonChars = pattern.Substring(2, pattern.Length - 2);
+        foreach (char c in comparisonChars)
+        {
+            if (inputLine.Contains(c))
+            {
+                Console.WriteLine($"{inputLine} contains {c}");
+                return false;
+            }
+        }
+        return true;
+    }
+    else
+    {
+        comparisonChars = pattern.Substring(1, pattern.Length - 2);
+        foreach (char c in comparisonChars)
+        {
+            if (inputLine.Contains(c))
+            {
+                Console.WriteLine($"{inputLine} contains {c}");
+                return true;
+            }
+        }
+        return false;
+    }
 }
