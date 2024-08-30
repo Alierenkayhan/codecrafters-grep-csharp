@@ -1,39 +1,74 @@
 using System.Text.RegularExpressions;
 static bool MatchPattern(string inputLine, string pattern)
 {
-    if (pattern.StartsWith("[^") && pattern.EndsWith("]"))
+    int inputIndex = 0;
+    int patternIndex = 0;
+
+    while (patternIndex < pattern.Length && inputIndex < inputLine.Length)
     {
-        // Handle negated character class pattern like [^abc]
-        var chars = pattern.Substring(2, pattern.Length - 3).ToCharArray();
-        return !inputLine.Any(c => chars.Contains(c));
+        if (pattern[patternIndex] == '\\')
+        {
+            patternIndex++;
+
+            if (patternIndex >= pattern.Length)
+                throw new ArgumentException("Invalid pattern: Trailing backslash");
+
+            if (pattern[patternIndex] == 'd')
+            {
+                if (!char.IsDigit(inputLine[inputIndex]))
+                    return false;
+
+                patternIndex++;
+                inputIndex++;
+            }
+            else if (pattern[patternIndex] == 'w')
+            {
+                if (!char.IsLetterOrDigit(inputLine[inputIndex]))
+                    return false;
+
+                patternIndex++;
+                inputIndex++;
+            }
+            else
+            {
+                throw new ArgumentException($"Unhandled escape sequence: \\{pattern[patternIndex]}");
+            }
+        }
+        else if (pattern[patternIndex] == '[')
+        {
+            int closeBracketIndex = pattern.IndexOf(']', patternIndex);
+            if (closeBracketIndex == -1)
+                throw new ArgumentException("Invalid pattern: Missing closing bracket");
+
+            string charClass = pattern.Substring(patternIndex + 1, closeBracketIndex - patternIndex - 1);
+            bool negate = charClass.StartsWith("^");
+            if (negate) charClass = charClass.Substring(1);
+
+            if (negate)
+            {
+                if (charClass.Contains(inputLine[inputIndex]))
+                    return false;
+            }
+            else
+            {
+                if (!charClass.Contains(inputLine[inputIndex]))
+                    return false;
+            }
+
+            patternIndex = closeBracketIndex + 1;
+            inputIndex++;
+        }
+        else
+        {
+            if (pattern[patternIndex] != inputLine[inputIndex])
+                return false;
+
+            patternIndex++;
+            inputIndex++;
+        }
     }
 
-    else if (pattern.StartsWith("[") && pattern.EndsWith("]"))
-    {
-        // Handle character class pattern like [abc]
-        var chars = pattern.Substring(1, pattern.Length - 2).ToCharArray();
-        return inputLine.Any(c => chars.Contains(c));
-    }
-    else if (pattern == @"\w")
-    {
-        // Handle word character pattern
-        return inputLine.Any(char.IsLetterOrDigit);
-    }
-    else if (pattern == @"\d")
-    {
-        // Handle digit character pattern
-        return inputLine.Any(char.IsDigit);
-    }
-    else if (pattern.Length == 1)
-    {
-        // Handle single character pattern
-        return inputLine.Contains(pattern);
-    }
-    else
-    {
-        throw new ArgumentException($"Unhandled pattern: {pattern}");
-    }
-
+    return patternIndex == pattern.Length && inputIndex == inputLine.Length;
 }
 
 if (args[0] != "-E")
