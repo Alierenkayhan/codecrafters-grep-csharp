@@ -1,12 +1,39 @@
 using System.Text.RegularExpressions;
 static bool MatchPattern(string inputLine, string pattern)
 {
-    if (pattern[0] == '[' && pattern[^1] == ']') return inputLine.AsSpan().ContainsAny(pattern.AsSpan(1, pattern.Length - 2));
-    else if (pattern == @"\w") return Regex.IsMatch(inputLine, @"\w");
-    else if (pattern == @"\d") return Regex.IsMatch(inputLine, @"\d");   
-    else if (pattern.Length == 1) return inputLine.Contains(pattern);
-    else throw new ArgumentException($"Unhandled pattern: {pattern}");
-    
+    if (pattern.StartsWith("[^") && pattern.EndsWith("]"))
+    {
+        // Handle negated character class pattern like [^abc]
+        var chars = pattern.Substring(2, pattern.Length - 3).ToCharArray();
+        return !inputLine.Any(c => chars.Contains(c));
+    }
+
+    else if (pattern.StartsWith("[") && pattern.EndsWith("]"))
+    {
+        // Handle character class pattern like [abc]
+        var chars = pattern.Substring(1, pattern.Length - 2).ToCharArray();
+        return inputLine.Any(c => chars.Contains(c));
+    }
+    else if (pattern == @"\w")
+    {
+        // Handle word character pattern
+        return inputLine.Any(char.IsLetterOrDigit);
+    }
+    else if (pattern == @"\d")
+    {
+        // Handle digit character pattern
+        return inputLine.Any(char.IsDigit);
+    }
+    else if (pattern.Length == 1)
+    {
+        // Handle single character pattern
+        return inputLine.Contains(pattern);
+    }
+    else
+    {
+        throw new ArgumentException($"Unhandled pattern: {pattern}");
+    }
+
 }
 
 if (args[0] != "-E")
